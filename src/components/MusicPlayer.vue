@@ -44,17 +44,6 @@
         <span class="time">{{ formatTime(duration) }}</span>
       </div>
 
-      <!-- Текст заметки к песне -->
-      <div class="note-quote" v-if="currentNoteText">
-        <span class="quote-icon">📝</span>
-        <span class="quote-text">"{{ currentNoteText }}"</span>
-      </div>
-      <div class="note-quote" v-else>
-        <span class="quote-icon">💭</span>
-        <span class="quote-text">Нет заметок к этой песне...</span>
-      </div>
-    </div>
-
     <div class="playlist-layout">
       <!-- Левая часть: Группы и список песен -->
       <div class="playlist-left">
@@ -130,6 +119,7 @@
               >
                 ✖
               </button>
+              </div>
             </div>
           </div>
         </div>
@@ -139,10 +129,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useStore } from '../composables/useStore'
+import { ref, computed } from 'vue'
 
-const { notes } = useStore()
 
 const playlist = ref([
   { 
@@ -225,8 +213,6 @@ const audioElement = ref(null)
 const progressPercent = ref(0)
 const selectedGroups = ref([])
 const selectedMoods = ref([])
-const currentNoteText = ref('')
-
 const currentSong = ref(playlist.value[0])
 
 // Уникальные группы
@@ -286,26 +272,6 @@ function removeMood(mood) {
   selectedMoods.value = selectedMoods.value.filter(m => m !== mood)
 }
 
-// Получить случайный текст заметки для песни
-function getRandomNoteForSong(songTitle, songArtist) {
-  const songNotes = notes.value.filter(note => 
-    note.selectedSong && 
-    note.selectedSong.title === songTitle && 
-    note.selectedSong.artist === songArtist
-  )
-  
-  if (songNotes.length === 0) return null
-  
-  const randomIndex = Math.floor(Math.random() * songNotes.length)
-  const note = songNotes[randomIndex]
-  return note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content
-}
-
-// Обновить текст заметки для текущей песни
-function updateCurrentNote() {
-  const noteText = getRandomNoteForSong(currentSong.value.title, currentSong.value.artist)
-  currentNoteText.value = noteText
-}
 
 // Функция для получения оригинального индекса
 function originalIndex(filteredIndex) {
@@ -348,7 +314,6 @@ function randomTrack() {
 function selectTrack(index) {
   currentTrackIndex.value = index
   currentSong.value = playlist.value[index]
-  updateCurrentNote()
   
   if (audioElement.value) {
     audioElement.value.load()
@@ -446,14 +411,6 @@ function seek(event) {
   audioElement.value.currentTime = percent * duration.value
 }
 
-// Следим за изменением заметок, чтобы обновлять текст
-watch([notes, currentSong], () => {
-  updateCurrentNote()
-}, { deep: true })
-
-onMounted(() => {
-  updateCurrentNote()
-})
 </script>
 
 <style scoped>
@@ -624,31 +581,6 @@ onMounted(() => {
   transition: width 0.1s linear;
 }
 
-/* Текст заметки */
-.note-quote {
-  background: rgba(255,255,255,0.15);
-  border-radius: 20px;
-  padding: 12px 16px;
-  margin: 10px 0 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: white;
-  text-align: left;
-  width: 100%;
-  font-style: italic;
-  line-height: 1.4;
-}
-
-.quote-icon {
-  font-size: 18px;
-  min-width: 28px;
-}
-
-.quote-text {
-  flex: 1;
-}
 
 /* Новая двухколоночная компоновка */
 .playlist-layout {
