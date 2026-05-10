@@ -171,7 +171,7 @@ const moods = [
   { value: 'happy', emoji: '😊', label: 'Счастлив' },
   { value: 'excited', emoji: '🤩', label: 'Восторг' },
   { value: 'calm', emoji: '😌', label: 'Спокоен' },
-  { value: 'sad', emoji: '😢', label: 'Грустен' },
+  { value: 'sad', emoji: '😢', label: 'Грусть' },
   { value: 'inspired', emoji: '💜', label: 'Вдохновлён' },
   { value: 'romantic', emoji: '💕', label: 'Романтичный' },
   { value: 'energetic', emoji: '🔥', label: 'Энергичный' },
