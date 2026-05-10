@@ -21,13 +21,15 @@ const totalMoodDistribution = computed(() => {
   return distribution
 })
 
-// Функции для заметок
+// ========== ФУНКЦИИ ДЛЯ ЗАМЕТОК ==========
+
 function addNote(noteData) {
   const newNote = {
     id: Date.now(),
     title: noteData.title || 'Без названия',
-    content: noteData.content,
+    content: noteData.content || '',
     mood: noteData.mood || 'happy',
+    selectedSong: noteData.selectedSong || null,
     date: new Date().toLocaleDateString('ru-RU'),
     timestamp: Date.now()
   }
@@ -42,6 +44,7 @@ function updateNote(id, updatedData) {
     notes.value[index] = { 
       ...notes.value[index], 
       ...updatedData,
+      selectedSong: updatedData.selectedSong !== undefined ? updatedData.selectedSong : notes.value[index].selectedSong,
       date: notes.value[index].date
     }
     saveNotes()
@@ -53,14 +56,16 @@ function deleteNote(id) {
   saveNotes()
 }
 
-// Функции для оценок альбомов
+// ========== ФУНКЦИИ ДЛЯ ВПЕЧАТЛЕНИЙ ==========
+
 function addRating(ratingData) {
   const newRating = {
     id: Date.now(),
-    album: ratingData.album,
-    artist: ratingData.artist,
-    score: ratingData.score,
-    comment: ratingData.comment,
+    artist: ratingData.artist || '',
+    favoriteSong: ratingData.favoriteSong || '',
+    score: ratingData.score || 3,
+    impressions: ratingData.impressions || '',
+    bestMoment: ratingData.bestMoment || '',
     date: new Date().toLocaleDateString('ru-RU')
   }
   ratings.value.unshift(newRating)
@@ -73,7 +78,8 @@ function deleteRating(id) {
   saveRatings()
 }
 
-// Сохранение и загрузка
+// ========== СОХРАНЕНИЕ И ЗАГРУЗКА ==========
+
 function saveNotes() {
   localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes.value))
 }
@@ -88,10 +94,19 @@ function saveSettings() {
 
 function loadData() {
   const savedNotes = localStorage.getItem(STORAGE_KEYS.NOTES)
-  if (savedNotes) notes.value = JSON.parse(savedNotes)
+  if (savedNotes) {
+    const parsedNotes = JSON.parse(savedNotes)
+    // Для старых заметок, у которых нет поля selectedSong, добавляем null
+    notes.value = parsedNotes.map(note => ({
+      ...note,
+      selectedSong: note.selectedSong || null
+    }))
+  }
   
   const savedRatings = localStorage.getItem(STORAGE_KEYS.RATINGS)
-  if (savedRatings) ratings.value = JSON.parse(savedRatings)
+  if (savedRatings) {
+    ratings.value = JSON.parse(savedRatings)
+  }
   
   const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS)
   if (savedSettings) {
@@ -100,6 +115,8 @@ function loadData() {
     applyDarkMode()
   }
 }
+
+// ========== ТЁМНАЯ ТЕМА ==========
 
 function applyDarkMode() {
   if (darkMode.value) {
@@ -114,6 +131,8 @@ function toggleDarkMode() {
   applyDarkMode()
   saveSettings()
 }
+
+// ========== ЭКСПОРТ ==========
 
 export function useStore() {
   return {

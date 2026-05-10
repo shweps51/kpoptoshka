@@ -173,11 +173,6 @@ const moods = [
   { value: 'calm', emoji: '😌', label: 'Спокоен' },
   { value: 'sad', emoji: '😢', label: 'Грусть' },
   { value: 'inspired', emoji: '💜', label: 'Вдохновлён' },
-  { value: 'romantic', emoji: '💕', label: 'Романтичный' },
-  { value: 'energetic', emoji: '🔥', label: 'Энергичный' },
-  { value: 'melancholic', emoji: '🌙', label: 'Меланхоличный' },
-  { value: 'confident', emoji: '✨', label: 'Уверенный' },
-  { value: 'nostalgic', emoji: '💭', label: 'Ностальгичный' }
 ]
 
 // Все группы из приложения (всегда показываем все, независимо от наличия заметок)

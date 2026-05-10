@@ -1,3 +1,103 @@
+<script setup>
+import { ref } from 'vue'
+
+const props = defineProps({
+  ratings: {
+    type: Array,
+    default: () => []
+  }
+})
+
+const emit = defineEmits(['add', 'delete'])
+
+// Полный плейлист для выбора треков
+const fullPlaylist = ref([
+  { title: 'Its Me', artist: 'ILLIT' },
+  { title: 'ALL FOR YOU', artist: 'ILLIT' },
+  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT' },
+  { title: '20cm', artist: 'TOMORROW X TOGETHER' },
+  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER' },
+  { title: 'Dirty Work', artist: 'aespa' },
+  { title: 'New World', artist: 'ateez' },
+  { title: 'Pretty Boy', artist: 'P1Harmony' },
+  { title: 'Ash', artist: 'ateez' },
+  { title: 'Stunner', artist: 'TEN' }
+])
+
+const showForm = ref(false)
+const availableSongs = ref([])
+
+const newRating = ref({
+  artist: '',
+  favoriteSong: '',
+  score: 3,
+  impressions: '',
+  bestMoment: ''
+})
+
+const errors = ref({
+  artist: '',
+  favoriteSong: '',
+  impressions: ''
+})
+
+// Обновление списка песен при выборе группы
+function updateSongsByArtist() {
+  if (newRating.value.artist) {
+    availableSongs.value = fullPlaylist.value.filter(
+      song => song.artist === newRating.value.artist
+    )
+    newRating.value.favoriteSong = ''
+  } else {
+    availableSongs.value = []
+  }
+}
+
+// Валидация и отправка
+function submitRating() {
+  // Очищаем ошибки
+  errors.value = { artist: '', favoriteSong: '', impressions: '' }
+  let hasError = false
+
+  if (!newRating.value.artist) {
+    errors.value.artist = 'Выберите группу или артиста'
+    hasError = true
+  }
+  
+  if (!newRating.value.favoriteSong) {
+    errors.value.favoriteSong = 'Выберите любимый трек'
+    hasError = true
+  }
+  
+  if (!newRating.value.impressions.trim()) {
+    errors.value.impressions = 'Напишите свои впечатления'
+    hasError = true
+  }
+  
+  if (hasError) return
+  
+  // Отправляем данные
+  emit('add', { 
+    artist: newRating.value.artist,
+    favoriteSong: newRating.value.favoriteSong,
+    score: newRating.value.score,
+    impressions: newRating.value.impressions,
+    bestMoment: newRating.value.bestMoment
+  })
+  
+  // Сбрасываем форму
+  newRating.value = {
+    artist: '',
+    favoriteSong: '',
+    score: 3,
+    impressions: '',
+    bestMoment: ''
+  }
+  availableSongs.value = []
+  showForm.value = false
+}
+</script>
+
 <template>
   <div class="rating-tracker">
     <div class="tracker-header">
@@ -10,7 +110,7 @@
     <!-- Форма добавления -->
     <div v-if="showForm" class="rating-form">
       <div class="form-field">
-        <label>🎤 Группа / Артист</label>
+        <label>🎤 Группа / Артист *</label>
         <select v-model="newRating.artist" class="artist-select" @change="updateSongsByArtist">
           <option value="" disabled>Выберите группу</option>
           <option value="ILLIT">ILLIT</option>
@@ -20,16 +120,18 @@
           <option value="P1Harmony">P1Harmony</option>
           <option value="TEN">TEN</option>
         </select>
+        <div v-if="errors.artist" class="error-text">{{ errors.artist }}</div>
       </div>
       
       <div class="form-field">
-        <label>🎵 Любимый трек</label>
+        <label>🎵 Любимый трек *</label>
         <select v-model="newRating.favoriteSong" class="song-select" :disabled="!newRating.artist">
           <option value="" disabled>Выберите трек</option>
           <option v-for="song in availableSongs" :key="song.title" :value="song.title">
             🎵 {{ song.title }}
           </option>
         </select>
+        <div v-if="errors.favoriteSong" class="error-text">{{ errors.favoriteSong }}</div>
       </div>
       
       <div class="form-field">
@@ -45,12 +147,13 @@
       </div>
       
       <div class="form-field">
-        <label>📝 Мои впечатления</label>
+        <label>📝 Мои впечатления *</label>
         <textarea 
           v-model="newRating.impressions" 
           placeholder="Что понравилось? Какие моменты запомнились? Что хочется отметить?..." 
           rows="4"
         ></textarea>
+        <div v-if="errors.impressions" class="error-text">{{ errors.impressions }}</div>
       </div>
       
       <div class="form-field">
@@ -88,7 +191,7 @@
         
         <div class="impressions-section">
           <div class="impressions-icon">📝</div>
-          <div class="impressions-text">{{ rating.impressions || rating.emotions || rating.comment || 'Нет описания' }}</div>
+          <div class="impressions-text">{{ rating.impressions || 'Нет описания' }}</div>
         </div>
         
         <div class="best-moment" v-if="rating.bestMoment">
@@ -103,85 +206,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed } from 'vue'
-
-const props = defineProps({
-  ratings: {
-    type: Array,
-    default: () => []
-  }
-})
-
-const emit = defineEmits(['add', 'delete'])
-
-// Полный плейлист
-const fullPlaylist = ref([
-  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3', recommendedMood: 'happy' },
-  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3', recommendedMood: 'romantic' },
-  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3', recommendedMood: 'energetic' },
-  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3', recommendedMood: 'nostalgic' },
-  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3', recommendedMood: 'romantic' },
-  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3', recommendedMood: 'confident' },
-  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3', recommendedMood: 'inspired' },
-  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3', recommendedMood: 'confident' },
-  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3', recommendedMood: 'melancholic' },
-  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3', recommendedMood: 'energetic' }
-])
-
-const showForm = ref(false)
-const availableSongs = ref([])
-
-const newRating = ref({
-  artist: '',
-  favoriteSong: '',
-  score: 3,
-  impressions: '',
-  bestMoment: '',
-  comment: ''
-})
-
-// Обновление списка песен при выборе группы
-function updateSongsByArtist() {
-  if (newRating.value.artist) {
-    availableSongs.value = fullPlaylist.value.filter(
-      song => song.artist === newRating.value.artist
-    )
-    newRating.value.favoriteSong = ''
-  } else {
-    availableSongs.value = []
-  }
-}
-
-function submitRating() {
-  if (!newRating.value.artist) {
-    alert('Выберите группу или артиста')
-    return
-  }
-  
-  if (!newRating.value.favoriteSong) {
-    alert('Выберите любимый трек')
-    return
-  }
-  
-  emit('add', { 
-    ...newRating.value,
-    impressions: newRating.value.impressions || newRating.value.emotions || newRating.value.comment || '💜'
-  })
-  
-  newRating.value = {
-    artist: '',
-    favoriteSong: '',
-    score: 3,
-    impressions: '',
-    bestMoment: '',
-    comment: ''
-  }
-  availableSongs.value = []
-  showForm.value = false
-}
-</script>
 
 <style scoped>
 .rating-tracker {
@@ -280,6 +304,17 @@ function submitRating() {
 .artist-select,
 .song-select {
   cursor: pointer;
+}
+
+.error-text {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin-top: 6px;
+  margin-left: 4px;
+}
+
+.theme-dark .error-text {
+  color: #ff8888;
 }
 
 .star-rating {

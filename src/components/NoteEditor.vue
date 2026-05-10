@@ -1,3 +1,87 @@
+<script setup>
+import { reactive, watch, ref, computed } from 'vue'
+
+const props = defineProps({
+  note: {
+    type: Object,
+    default: null
+  },
+  moods: {
+    type: Array,
+    default: () => []
+  }
+})
+
+const emit = defineEmits(['save', 'cancel'])
+
+// Полный плейлист (без recommendedMood, только русские названия настроений не нужны)
+const fullPlaylist = ref([
+  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3' },
+  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3' },
+  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3' },
+  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3' },
+  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3' },
+  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3' },
+  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3' },
+  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3' },
+  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3' },
+  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3' }
+])
+
+const form = reactive({
+  title: '',
+  content: '',
+  mood: 'happy',
+  selectedSong: null
+})
+
+const songSearch = ref('')
+
+const filteredSongs = computed(() => {
+  let songs = [...fullPlaylist.value]
+  if (songSearch.value.trim()) {
+    const query = songSearch.value.toLowerCase()
+    songs = songs.filter(song => 
+      song.title.toLowerCase().includes(query) || 
+      song.artist.toLowerCase().includes(query)
+    )
+  }
+  return songs
+})
+
+const selectSong = (song) => {
+  form.selectedSong = { ...song }
+}
+
+const clearSong = () => {
+  form.selectedSong = null
+}
+
+const saveNote = () => {
+  const noteToSave = {
+    title: form.title,
+    content: form.content,
+    mood: form.mood,
+    selectedSong: form.selectedSong ? { ...form.selectedSong } : null
+  }
+  emit('save', noteToSave)
+}
+
+watch(() => props.note, (newNote) => {
+  if (newNote) {
+    form.title = newNote.title || ''
+    form.content = newNote.content || ''
+    form.mood = newNote.mood || 'happy'
+    form.selectedSong = newNote.selectedSong ? { ...newNote.selectedSong } : null
+  } else {
+    form.title = ''
+    form.content = ''
+    form.mood = 'happy'
+    form.selectedSong = null
+  }
+  songSearch.value = ''
+}, { immediate: true })
+</script>
 <template>
   <div class="note-editor">
     <h3>{{ note?.id ? '✏️ Редактировать' : '➕ Новая запись' }}</h3>
@@ -18,7 +102,7 @@
         <button 
           v-for="mood in moods" 
           :key="mood.value"
-          @click="selectMood(mood.value)"
+          @click="form.mood = mood.value"
           :class="['mood-btn', { active: form.mood === mood.value }]"
         >
           {{ mood.emoji }} {{ mood.label }}
@@ -26,9 +110,9 @@
       </div>
     </div>
 
-    <!-- НОВЫЙ БЛОК: ВЫБОР K-POP ПЕСНИ -->
+    <!-- БЛОК: ВЫБОР ПЕСНИ К ЗАМЕТКЕ -->
     <div class="editor-field">
-      <label>🎵 K-Pop саундтрек к этому дню</label>
+      <label>🎵 Связать с песней</label>
       <div class="song-selector">
         <div class="song-search">
           <input 
@@ -53,19 +137,8 @@
               <div class="song-details">
                 <div class="song-title">{{ song.title }}</div>
                 <div class="song-artist">{{ song.artist }}</div>
-                <div class="song-mood-badge" v-if="song.recommendedMood">
-                  <span>{{ getMoodEmoji(song.recommendedMood) }}</span>
-                  <span>{{ getMoodLabel(song.recommendedMood) }}</span>
-                </div>
               </div>
             </div>
-            <button 
-              @click.stop="previewSong(song)" 
-              class="preview-btn"
-              :class="{ playing: currentPreview === song.title + song.artist }"
-            >
-              {{ currentPreview === song.title + song.artist ? '⏸' : '▶' }}
-            </button>
           </div>
         </div>
       </div>
@@ -81,7 +154,7 @@
         <button @click="clearSong" class="clear-song-btn">✖</button>
       </div>
       <div v-else class="no-song">
-        <span>💿 Выберите песню, которая описывает ваше настроение</span>
+        <span>💿 Выберите песню, связанную с этой заметкой</span>
       </div>
     </div>
 
@@ -89,161 +162,8 @@
       <button @click="saveNote" class="save-btn">💾 Сохранить</button>
       <button @click="$emit('cancel')" class="cancel-btn">❌ Отмена</button>
     </div>
-
-    <!-- Скрытый аудио-элемент для предпросмотра -->
-    <audio ref="audioPlayer" style="display: none"></audio>
   </div>
 </template>
-
-<script setup>
-import { reactive, watch, ref, computed } from 'vue'
-
-const props = defineProps({
-  note: {
-    type: Object,
-    default: null
-  },
-  moods: {
-    type: Array,
-    default: () => []
-  }
-})
-
-const emit = defineEmits(['save', 'cancel'])
-
-// Полный плейлист с привязкой к настроениям
-const fullPlaylist = ref([
-  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3', recommendedMood: 'happy' },
-  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3', recommendedMood: 'romantic' },
-  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3', recommendedMood: 'energetic' },
-  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3', recommendedMood: 'nostalgic' },
-  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3', recommendedMood: 'romantic' },
-  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3', recommendedMood: 'confident' },
-  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3', recommendedMood: 'inspired' },
-  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3', recommendedMood: 'confident' },
-  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3', recommendedMood: 'melancholic' },
-  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3', recommendedMood: 'energetic' }
-])
-
-// Состояния
-const form = reactive({
-  title: '',
-  content: '',
-  mood: 'happy',
-  selectedSong: null
-})
-
-const songSearch = ref('')
-const currentPreview = ref(null)
-const audioPlayer = ref(null)
-
-// Фильтрация песен
-const filteredSongs = computed(() => {
-  let songs = [...fullPlaylist.value]
-  
-  if (songSearch.value.trim()) {
-    const query = songSearch.value.toLowerCase()
-    songs = songs.filter(song => 
-      song.title.toLowerCase().includes(query) || 
-      song.artist.toLowerCase().includes(query)
-    )
-  }
-  
-  return songs
-})
-
-// Вспомогательные функции для настроений
-const getMoodEmoji = (moodValue) => {
-  const mood = props.moods.find(m => m.value === moodValue)
-  return mood ? mood.emoji : '🎵'
-}
-
-const getMoodLabel = (moodValue) => {
-  const mood = props.moods.find(m => m.value === moodValue)
-  return mood ? mood.label : moodValue
-}
-
-// Выбор песни
-const selectSong = (song) => {
-  form.selectedSong = { ...song }
-  if (currentPreview.value) {
-    stopPreview()
-  }
-}
-
-// Очистка выбранной песни
-const clearSong = () => {
-  form.selectedSong = null
-  stopPreview()
-}
-
-// Выбор настроения
-const selectMood = (moodValue) => {
-  form.mood = moodValue
-}
-
-// Предпросмотр песни
-const previewSong = (song) => {
-  if (!audioPlayer.value) return
-  
-  const previewId = song.title + song.artist
-  
-  if (currentPreview.value === previewId) {
-    stopPreview()
-  } else {
-    stopPreview()
-    audioPlayer.value.src = song.src
-    audioPlayer.value.play().catch(e => console.log('Ошибка воспроизведения:', e))
-    currentPreview.value = previewId
-  }
-}
-
-const stopPreview = () => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause()
-    audioPlayer.value.currentTime = 0
-  }
-  currentPreview.value = null
-}
-
-// Сохранение заметки
-const saveNote = () => {
-  // Создаем копию form с полными данными
-  const noteToSave = {
-    title: form.title,
-    content: form.content,
-    mood: form.mood,
-    selectedSong: form.selectedSong ? { ...form.selectedSong } : null
-  }
-  emit('save', noteToSave)
-}
-
-// Наблюдение за изменением заметки для редактирования
-watch(() => props.note, (newNote) => {
-  if (newNote) {
-    form.title = newNote.title || ''
-    form.content = newNote.content || ''
-    form.mood = newNote.mood || 'happy'
-    form.selectedSong = newNote.selectedSong ? { ...newNote.selectedSong } : null
-  } else {
-    form.title = ''
-    form.content = ''
-    form.mood = 'happy'
-    form.selectedSong = null
-  }
-  stopPreview()
-  songSearch.value = ''
-}, { immediate: true })
-
-// Остановка аудио при размонтировании
-import { onUnmounted } from 'vue'
-onUnmounted(() => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause()
-    audioPlayer.value.src = ''
-  }
-})
-</script>
 
 <style scoped>
 .note-editor {
