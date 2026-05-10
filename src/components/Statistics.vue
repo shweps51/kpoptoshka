@@ -9,30 +9,48 @@
         <div class="stat-label">Всего записей</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">⭐</div>
+        <div class="stat-icon">💭</div>
         <div class="stat-number">{{ ratings.length }}</div>
-        <div class="stat-label">Оценённых альбомов</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">😊</div>
-        <div class="stat-number">{{ topMood.emoji }} {{ topMood.count }}</div>
-        <div class="stat-label">Самое частое настроение</div>
+        <div class="stat-label">Впечатлений</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🎵</div>
-        <div class="stat-number">{{ avgRating.toFixed(1) }}</div>
-        <div class="stat-label">Средний рейтинг</div>
+        <div class="stat-number">{{ totalSongsInNotes }}</div>
+        <div class="stat-label">Песен в заметках</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">{{ topMood.emoji }}</div>
+        <div class="stat-number">{{ topMood.label }}</div>
+        <div class="stat-label">Самое частое настроение</div>
       </div>
     </div>
 
-    <div class="mood-stats">
-      <h3>Распределение настроений</h3>
-      <div class="mood-bars">
-        <div v-for="mood in moodList" :key="mood.value" class="mood-bar-item">
-          <div class="mood-label">{{ mood.emoji }} {{ mood.label }}</div>
-          <div class="bar-container">
-            <div class="bar-fill" :style="{ width: getMoodPercent(mood.value) + '%' }"></div>
-            <span class="bar-count">{{ getMoodCount(mood.value) }}</span>
+    <div class="stats-row">
+      <!-- Распределение настроений -->
+      <div class="mood-stats">
+        <h3>😊 Распределение настроений</h3>
+        <div class="mood-bars">
+          <div v-for="mood in moodList" :key="mood.value" class="mood-bar-item">
+            <div class="mood-label">{{ mood.emoji }} {{ mood.label }}</div>
+            <div class="bar-container">
+              <div class="bar-fill" :style="{ width: getMoodPercent(mood.value) + '%' }"></div>
+              <span class="bar-count">{{ getMoodCount(mood.value) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Топ исполнителей по впечатлениям -->
+      <div class="top-artists">
+        <h3>🌟 Топ исполнителей</h3>
+        <div class="artists-list">
+          <div v-for="artist in topArtists" :key="artist.name" class="artist-item">
+            <div class="artist-rank">{{ artist.rank }}</div>
+            <div class="artist-name">{{ artist.name }}</div>
+            <div class="artist-count">{{ artist.count }} 💭</div>
+          </div>
+          <div v-if="topArtists.length === 0" class="no-data">
+            Нет данных об исполнителях
           </div>
         </div>
       </div>
@@ -58,12 +76,19 @@ const moodList = [
   { value: 'happy', emoji: '😊', label: 'Счастлив' },
   { value: 'excited', emoji: '🤩', label: 'Восторг' },
   { value: 'calm', emoji: '😌', label: 'Спокоен' },
-  { value: 'sad', emoji: '😢', label: 'Грусть' },
-  { value: 'inspired', emoji: '💜', label: 'Вдохновлён' }
+  { value: 'sad', emoji: '😢', label: 'Грустен' },
+  { value: 'inspired', emoji: '💜', label: 'Вдохновлён' },
+  { value: 'romantic', emoji: '💕', label: 'Романтичный' },
+  { value: 'energetic', emoji: '🔥', label: 'Энергичный' },
+  { value: 'melancholic', emoji: '🌙', label: 'Меланхоличный' },
+  { value: 'confident', emoji: '✨', label: 'Уверенный' },
+  { value: 'nostalgic', emoji: '💭', label: 'Ностальгичный' }
 ]
 
+// Подсчёт количества заметок по настроениям
 const moodCounts = computed(() => {
-  const counts = { happy: 0, excited: 0, calm: 0, sad: 0, inspired: 0 }
+  const counts = {}
+  moodList.forEach(mood => { counts[mood.value] = 0 })
   props.notes.forEach(note => {
     if (counts[note.mood] !== undefined) counts[note.mood]++
   })
@@ -79,25 +104,51 @@ const getMoodPercent = (mood) => {
   return (moodCounts.value[mood] / totalNotes.value) * 100
 }
 
+// Самое частое настроение
 const topMood = computed(() => {
-  let maxMood = { value: 'happy', count: 0, emoji: '😊' }
+  let maxMood = { value: 'happy', count: 0, emoji: '😊', label: 'Счастлив' }
   for (const mood of moodList) {
     const count = moodCounts.value[mood.value]
     if (count > maxMood.count) {
-      maxMood = { value: mood.value, count, emoji: mood.emoji }
+      maxMood = { value: mood.value, count, emoji: mood.emoji, label: mood.label }
     }
   }
   return maxMood
 })
 
-const avgRating = computed(() => {
-  if (props.ratings.length === 0) return 0
-  const sum = props.ratings.reduce((acc, r) => acc + r.score, 0)
-  return sum / props.ratings.length
+// Общее количество уникальных песен в заметках
+const totalSongsInNotes = computed(() => {
+  const songs = new Set()
+  props.notes.forEach(note => {
+    if (note.selectedSong?.title) {
+      songs.add(note.selectedSong.title + '|' + note.selectedSong.artist)
+    }
+  })
+  return songs.size
+})
+
+// Топ исполнителей из впечатлений
+const topArtists = computed(() => {
+  const artistCount = {}
+  props.ratings.forEach(rating => {
+    if (rating.artist) {
+      artistCount[rating.artist] = (artistCount[rating.artist] || 0) + 1
+    }
+  })
+  
+  return Object.entries(artistCount)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map((item, index) => ({ ...item, rank: index + 1 }))
 })
 </script>
 
 <style scoped>
+.statistics {
+  width: 100%;
+}
+
 .statistics h2 {
   font-size: 24px;
   color: #5a4a8c;
@@ -110,7 +161,7 @@ const avgRating = computed(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -121,6 +172,12 @@ const avgRating = computed(() => {
   padding: 20px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
 }
 
 .theme-dark .stat-card {
@@ -133,7 +190,7 @@ const avgRating = computed(() => {
 }
 
 .stat-number {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: bold;
   color: #5a4a8c;
   margin-bottom: 4px;
@@ -148,6 +205,35 @@ const avgRating = computed(() => {
   color: #999;
 }
 
+.theme-dark .stat-label {
+  color: #aaa;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 768px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Распределение настроений */
+.mood-stats {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.theme-dark .mood-stats {
+  background: #2d2d4a;
+}
+
 .mood-stats h3 {
   font-size: 18px;
   color: #5a4a8c;
@@ -155,25 +241,21 @@ const avgRating = computed(() => {
 }
 
 .theme-dark .mood-stats h3 {
-  color: #D6CEF7;
+  color: #CDB4F3;
 }
 
 .mood-bars {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-}
-
-.theme-dark .mood-bars {
-  background: #2d2d4a;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .mood-bar-item {
-  margin-bottom: 16px;
+  width: 100%;
 }
 
 .mood-label {
-  font-size: 14px;
+  font-size: 13px;
   margin-bottom: 6px;
   color: #333;
 }
@@ -201,7 +283,7 @@ const avgRating = computed(() => {
   background: #CDB4F3;
   height: 100%;
   border-radius: 10px;
-  transition: width 0.5s;
+  transition: width 0.5s ease;
 }
 
 .bar-count {
@@ -215,5 +297,81 @@ const avgRating = computed(() => {
 
 .theme-dark .bar-count {
   color: #fff;
+}
+
+/* Топ исполнителей */
+.top-artists {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.theme-dark .top-artists {
+  background: #2d2d4a;
+}
+
+.top-artists h3 {
+  font-size: 18px;
+  color: #5a4a8c;
+  margin-bottom: 16px;
+}
+
+.theme-dark .top-artists h3 {
+  color: #CDB4F3;
+}
+
+.artists-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.artist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #F5F0FF;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.theme-dark .artist-item {
+  background: #3a3a5a;
+}
+
+.artist-item:hover {
+  transform: translateX(5px);
+}
+
+.artist-rank {
+  font-size: 18px;
+  font-weight: bold;
+  color: #CDB4F3;
+  min-width: 40px;
+}
+
+.artist-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.theme-dark .artist-name {
+  color: #fff;
+}
+
+.artist-count {
+  font-size: 13px;
+  color: #B7AEE2;
+}
+
+.no-data {
+  text-align: center;
+  padding: 30px;
+  color: #B0A8D9;
+  font-size: 14px;
 }
 </style>

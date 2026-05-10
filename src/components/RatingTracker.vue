@@ -1,21 +1,39 @@
 <template>
   <div class="rating-tracker">
     <div class="tracker-header">
-      <h2>⭐ Оценка альбомов</h2>
+      <h2>💭 Мои впечатления</h2>
       <button @click="showForm = !showForm" class="add-rating-btn">
-        {{ showForm ? '− Отмена' : '+ Добавить оценку' }}
+        {{ showForm ? '− Отмена' : '+ Добавить впечатление' }}
       </button>
     </div>
 
     <!-- Форма добавления -->
     <div v-if="showForm" class="rating-form">
       <div class="form-field">
-        <input v-model="newRating.album" placeholder="Название альбома" />
+        <label>🎤 Группа / Артист</label>
+        <select v-model="newRating.artist" class="artist-select" @change="updateSongsByArtist">
+          <option value="" disabled>Выберите группу</option>
+          <option value="ILLIT">ILLIT</option>
+          <option value="TOMORROW X TOGETHER">TOMORROW X TOGETHER</option>
+          <option value="aespa">aespa</option>
+          <option value="ateez">ateez</option>
+          <option value="P1Harmony">P1Harmony</option>
+          <option value="TEN">TEN</option>
+        </select>
       </div>
+      
       <div class="form-field">
-        <input v-model="newRating.artist" placeholder="Группа / Исполнитель" />
+        <label>🎵 Любимый трек</label>
+        <select v-model="newRating.favoriteSong" class="song-select" :disabled="!newRating.artist">
+          <option value="" disabled>Выберите трек</option>
+          <option v-for="song in availableSongs" :key="song.title" :value="song.title">
+            🎵 {{ song.title }}
+          </option>
+        </select>
       </div>
+      
       <div class="form-field">
+        <label>⭐ Моя оценка</label>
         <div class="star-rating">
           <span 
             v-for="star in 5" 
@@ -25,38 +43,69 @@
           >★</span>
         </div>
       </div>
+      
       <div class="form-field">
-        <textarea v-model="newRating.comment" placeholder="Короткий отзыв..." rows="2"></textarea>
+        <label>📝 Мои впечатления</label>
+        <textarea 
+          v-model="newRating.impressions" 
+          placeholder="Что понравилось? Какие моменты запомнились? Что хочется отметить?..." 
+          rows="4"
+        ></textarea>
       </div>
-      <button @click="submitRating" class="submit-rating">💾 Сохранить</button>
+      
+      <div class="form-field">
+        <label>🔥 Лучший момент</label>
+        <input v-model="newRating.bestMoment" placeholder="Например: припев, бридж, вступление..." />
+      </div>
+      
+      <button @click="submitRating" class="submit-rating">💾 Сохранить впечатление</button>
     </div>
 
-    <!-- Список оценок -->
+    <!-- Список впечатлений -->
     <div v-if="ratings.length === 0" class="empty-ratings">
-      <span>🎵</span>
-      <p>Пока нет оценок</p>
-      <p class="hint">Добавь первый альбом!</p>
+      <span>💜</span>
+      <p>Пока нет впечатлений</p>
+      <p class="hint">Поделись своими мыслями о прослушанном!</p>
     </div>
 
     <div v-else class="ratings-list">
       <div v-for="rating in ratings" :key="rating.id" class="rating-card">
         <div class="rating-header">
+          <div class="artist-info">
+            <span class="artist-icon">🎤</span>
+            <span class="artist-name">{{ rating.artist }}</span>
+          </div>
           <div class="rating-score">
             <span v-for="star in 5" :key="star" class="star small" :class="{ active: star <= rating.score }">★</span>
           </div>
           <button @click="$emit('delete', rating.id)" class="delete-rating">🗑️</button>
         </div>
-        <h3>{{ rating.album }}</h3>
-        <p class="artist">{{ rating.artist }}</p>
-        <p class="comment">{{ rating.comment }}</p>
-        <div class="rating-date">{{ rating.date }}</div>
+        
+        <div class="favorite-song" v-if="rating.favoriteSong">
+          <span class="favorite-icon">🎵</span>
+          <span>Любимый трек: <strong>{{ rating.favoriteSong }}</strong></span>
+        </div>
+        
+        <div class="impressions-section">
+          <div class="impressions-icon">📝</div>
+          <div class="impressions-text">{{ rating.impressions || rating.emotions || rating.comment || 'Нет описания' }}</div>
+        </div>
+        
+        <div class="best-moment" v-if="rating.bestMoment">
+          <span class="moment-icon">🔥</span>
+          <span>Лучший момент: {{ rating.bestMoment }}</span>
+        </div>
+        
+        <div class="rating-footer">
+          <div class="rating-date">{{ rating.date }}</div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
   ratings: {
@@ -67,21 +116,69 @@ const props = defineProps({
 
 const emit = defineEmits(['add', 'delete'])
 
+// Полный плейлист
+const fullPlaylist = ref([
+  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3', recommendedMood: 'happy' },
+  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3', recommendedMood: 'romantic' },
+  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3', recommendedMood: 'energetic' },
+  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3', recommendedMood: 'nostalgic' },
+  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3', recommendedMood: 'romantic' },
+  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3', recommendedMood: 'confident' },
+  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3', recommendedMood: 'inspired' },
+  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3', recommendedMood: 'confident' },
+  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3', recommendedMood: 'melancholic' },
+  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3', recommendedMood: 'energetic' }
+])
+
 const showForm = ref(false)
+const availableSongs = ref([])
+
 const newRating = ref({
-  album: '',
   artist: '',
+  favoriteSong: '',
   score: 3,
+  impressions: '',
+  bestMoment: '',
   comment: ''
 })
 
+// Обновление списка песен при выборе группы
+function updateSongsByArtist() {
+  if (newRating.value.artist) {
+    availableSongs.value = fullPlaylist.value.filter(
+      song => song.artist === newRating.value.artist
+    )
+    newRating.value.favoriteSong = ''
+  } else {
+    availableSongs.value = []
+  }
+}
+
 function submitRating() {
-  if (!newRating.value.album.trim()) {
-    alert('Введите название альбома')
+  if (!newRating.value.artist) {
+    alert('Выберите группу или артиста')
     return
   }
-  emit('add', { ...newRating.value })
-  newRating.value = { album: '', artist: '', score: 3, comment: '' }
+  
+  if (!newRating.value.favoriteSong) {
+    alert('Выберите любимый трек')
+    return
+  }
+  
+  emit('add', { 
+    ...newRating.value,
+    impressions: newRating.value.impressions || newRating.value.emotions || newRating.value.comment || '💜'
+  })
+  
+  newRating.value = {
+    artist: '',
+    favoriteSong: '',
+    score: 3,
+    impressions: '',
+    bestMoment: '',
+    comment: ''
+  }
+  availableSongs.value = []
   showForm.value = false
 }
 </script>
@@ -103,6 +200,7 @@ function submitRating() {
 .tracker-header h2 {
   font-size: 24px;
   color: #5a4a8c;
+  margin: 0;
 }
 
 .theme-dark .tracker-header h2 {
@@ -140,21 +238,48 @@ function submitRating() {
   margin-bottom: 16px;
 }
 
+.form-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a4a8c;
+  margin-bottom: 6px;
+}
+
+.theme-dark .form-field label {
+  color: #CDB4F3;
+}
+
 .form-field input,
-.form-field textarea {
+.form-field textarea,
+.artist-select,
+.song-select {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid #D3D3FB;
   border-radius: 16px;
   font-family: inherit;
   background: white;
+  font-size: 14px;
+}
+
+.song-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .theme-dark .form-field input,
-.theme-dark .form-field textarea {
+.theme-dark .form-field textarea,
+.theme-dark .artist-select,
+.theme-dark .song-select {
   background: #3a3a5a;
   border-color: #4a4a6a;
   color: #fff;
+}
+
+.artist-select,
+.song-select {
+  cursor: pointer;
 }
 
 .star-rating {
@@ -180,11 +305,18 @@ function submitRating() {
   border-radius: 30px;
   color: white;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.submit-rating:hover {
+  background: #CDB4F3;
+  transform: translateY(-2px);
 }
 
 .empty-ratings {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   background: white;
   border-radius: 24px;
   color: #B0A8D9;
@@ -215,8 +347,14 @@ function submitRating() {
 .rating-card {
   background: white;
   border-radius: 20px;
-  padding: 16px;
+  padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.3s;
+}
+
+.rating-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
 }
 
 .theme-dark .rating-card {
@@ -227,7 +365,36 @@ function submitRating() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.artist-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #E7E0FC;
+  padding: 6px 14px;
+  border-radius: 30px;
+}
+
+.theme-dark .artist-info {
+  background: #3a3a5a;
+}
+
+.artist-icon {
+  font-size: 14px;
+}
+
+.artist-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5a4a8c;
+}
+
+.theme-dark .artist-name {
+  color: #CDB4F3;
 }
 
 .rating-score .star {
@@ -246,6 +413,7 @@ function submitRating() {
   cursor: pointer;
   opacity: 0.6;
   transition: all 0.3s;
+  padding: 4px 8px;
 }
 
 .delete-rating:hover {
@@ -253,35 +421,86 @@ function submitRating() {
   transform: scale(1.1);
 }
 
-.rating-card h3 {
-  font-size: 18px;
-  margin-bottom: 4px;
-  color: #333;
-}
-
-.theme-dark .rating-card h3 {
-  color: #fff;
-}
-
-.artist {
+.favorite-song {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(205, 180, 243, 0.15);
+  padding: 8px 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
   font-size: 13px;
-  color: #B0A8D9;
-  margin-bottom: 8px;
+  color: #5a4a8c;
 }
 
-.comment {
+.theme-dark .favorite-song {
+  color: #CDB4F3;
+}
+
+.favorite-icon {
   font-size: 14px;
-  color: #666;
-  line-height: 1.4;
-  margin-bottom: 8px;
 }
 
-.theme-dark .comment {
-  color: #aaa;
+.impressions-section {
+  display: flex;
+  gap: 12px;
+  background: #F5F0FF;
+  padding: 14px;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+.theme-dark .impressions-section {
+  background: #3a3a5a;
+}
+
+.impressions-icon {
+  font-size: 20px;
+  min-width: 32px;
+}
+
+.impressions-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #555;
+}
+
+.theme-dark .impressions-text {
+  color: #ccc;
+}
+
+.best-moment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #B7AEE2;
+  margin-bottom: 12px;
+  padding: 6px 0;
+}
+
+.moment-icon {
+  font-size: 14px;
+}
+
+.rating-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.theme-dark .rating-footer {
+  border-top-color: #3a3a5a;
 }
 
 .rating-date {
   font-size: 11px;
   color: #999;
+}
+
+.theme-dark .rating-date {
+  color: #888;
 }
 </style>

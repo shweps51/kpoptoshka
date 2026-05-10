@@ -18,7 +18,7 @@
         <button 
           v-for="mood in moods" 
           :key="mood.value"
-          @click="form.mood = mood.value"
+          @click="selectMood(mood.value)"
           :class="['mood-btn', { active: form.mood === mood.value }]"
         >
           {{ mood.emoji }} {{ mood.label }}
@@ -26,15 +26,77 @@
       </div>
     </div>
 
+    <!-- НОВЫЙ БЛОК: ВЫБОР K-POP ПЕСНИ -->
+    <div class="editor-field">
+      <label>🎵 K-Pop саундтрек к этому дню</label>
+      <div class="song-selector">
+        <div class="song-search">
+          <input 
+            type="text" 
+            v-model="songSearch" 
+            placeholder="Поиск по названию или артисту..."
+            class="song-search-input"
+          />
+        </div>
+        
+        <div class="song-list">
+          <div 
+            v-for="song in filteredSongs" 
+            :key="song.title + song.artist"
+            @click="selectSong(song)"
+            :class="['song-item', { selected: form.selectedSong?.title === song.title && form.selectedSong?.artist === song.artist }]"
+          >
+            <div class="song-info">
+              <div class="song-cover">
+                <span class="cover-placeholder">🎤</span>
+              </div>
+              <div class="song-details">
+                <div class="song-title">{{ song.title }}</div>
+                <div class="song-artist">{{ song.artist }}</div>
+                <div class="song-mood-badge" v-if="song.recommendedMood">
+                  <span>{{ getMoodEmoji(song.recommendedMood) }}</span>
+                  <span>{{ getMoodLabel(song.recommendedMood) }}</span>
+                </div>
+              </div>
+            </div>
+            <button 
+              @click.stop="previewSong(song)" 
+              class="preview-btn"
+              :class="{ playing: currentPreview === song.title + song.artist }"
+            >
+              {{ currentPreview === song.title + song.artist ? '⏸' : '▶' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Отображение выбранной песни -->
+      <div v-if="form.selectedSong" class="selected-song">
+        <div class="selected-song-info">
+          <span class="selected-icon">🎵</span>
+          <div>
+            <strong>{{ form.selectedSong.title }}</strong> — {{ form.selectedSong.artist }}
+          </div>
+        </div>
+        <button @click="clearSong" class="clear-song-btn">✖</button>
+      </div>
+      <div v-else class="no-song">
+        <span>💿 Выберите песню, которая описывает ваше настроение</span>
+      </div>
+    </div>
+
     <div class="editor-actions">
-      <button @click="$emit('save', form)" class="save-btn">💾 Сохранить</button>
+      <button @click="saveNote" class="save-btn">💾 Сохранить</button>
       <button @click="$emit('cancel')" class="cancel-btn">❌ Отмена</button>
     </div>
+
+    <!-- Скрытый аудио-элемент для предпросмотра -->
+    <audio ref="audioPlayer" style="display: none"></audio>
   </div>
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { reactive, watch, ref, computed } from 'vue'
 
 const props = defineProps({
   note: {
@@ -49,23 +111,138 @@ const props = defineProps({
 
 const emit = defineEmits(['save', 'cancel'])
 
+// Полный плейлист с привязкой к настроениям
+const fullPlaylist = ref([
+  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3', recommendedMood: 'happy' },
+  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3', recommendedMood: 'romantic' },
+  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3', recommendedMood: 'energetic' },
+  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3', recommendedMood: 'nostalgic' },
+  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3', recommendedMood: 'romantic' },
+  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3', recommendedMood: 'confident' },
+  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3', recommendedMood: 'inspired' },
+  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3', recommendedMood: 'confident' },
+  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3', recommendedMood: 'melancholic' },
+  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3', recommendedMood: 'energetic' }
+])
+
+// Состояния
 const form = reactive({
   title: '',
   content: '',
-  mood: 'happy'
+  mood: 'happy',
+  selectedSong: null
 })
 
+const songSearch = ref('')
+const currentPreview = ref(null)
+const audioPlayer = ref(null)
+
+// Фильтрация песен
+const filteredSongs = computed(() => {
+  let songs = [...fullPlaylist.value]
+  
+  if (songSearch.value.trim()) {
+    const query = songSearch.value.toLowerCase()
+    songs = songs.filter(song => 
+      song.title.toLowerCase().includes(query) || 
+      song.artist.toLowerCase().includes(query)
+    )
+  }
+  
+  return songs
+})
+
+// Вспомогательные функции для настроений
+const getMoodEmoji = (moodValue) => {
+  const mood = props.moods.find(m => m.value === moodValue)
+  return mood ? mood.emoji : '🎵'
+}
+
+const getMoodLabel = (moodValue) => {
+  const mood = props.moods.find(m => m.value === moodValue)
+  return mood ? mood.label : moodValue
+}
+
+// Выбор песни
+const selectSong = (song) => {
+  form.selectedSong = { ...song }
+  if (currentPreview.value) {
+    stopPreview()
+  }
+}
+
+// Очистка выбранной песни
+const clearSong = () => {
+  form.selectedSong = null
+  stopPreview()
+}
+
+// Выбор настроения
+const selectMood = (moodValue) => {
+  form.mood = moodValue
+}
+
+// Предпросмотр песни
+const previewSong = (song) => {
+  if (!audioPlayer.value) return
+  
+  const previewId = song.title + song.artist
+  
+  if (currentPreview.value === previewId) {
+    stopPreview()
+  } else {
+    stopPreview()
+    audioPlayer.value.src = song.src
+    audioPlayer.value.play().catch(e => console.log('Ошибка воспроизведения:', e))
+    currentPreview.value = previewId
+  }
+}
+
+const stopPreview = () => {
+  if (audioPlayer.value) {
+    audioPlayer.value.pause()
+    audioPlayer.value.currentTime = 0
+  }
+  currentPreview.value = null
+}
+
+// Сохранение заметки
+const saveNote = () => {
+  // Создаем копию form с полными данными
+  const noteToSave = {
+    title: form.title,
+    content: form.content,
+    mood: form.mood,
+    selectedSong: form.selectedSong ? { ...form.selectedSong } : null
+  }
+  emit('save', noteToSave)
+}
+
+// Наблюдение за изменением заметки для редактирования
 watch(() => props.note, (newNote) => {
   if (newNote) {
     form.title = newNote.title || ''
     form.content = newNote.content || ''
     form.mood = newNote.mood || 'happy'
+    form.selectedSong = newNote.selectedSong ? { ...newNote.selectedSong } : null
   } else {
     form.title = ''
     form.content = ''
     form.mood = 'happy'
+    form.selectedSong = null
   }
+  stopPreview()
+  songSearch.value = ''
 }, { immediate: true })
+
+// Остановка аудио при размонтировании
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (audioPlayer.value) {
+    audioPlayer.value.pause()
+    audioPlayer.value.src = ''
+  }
+})
 </script>
 
 <style scoped>
@@ -116,6 +293,7 @@ watch(() => props.note, (newNote) => {
   font-family: inherit;
   background: white;
   transition: all 0.3s;
+  box-sizing: border-box;
 }
 
 .theme-dark .editor-field input,
@@ -159,10 +337,209 @@ watch(() => props.note, (newNote) => {
   border-color: #CDB4F3;
 }
 
+.song-selector {
+  border: 2px solid #D3D3FB;
+  border-radius: 16px;
+  background: white;
+  overflow: hidden;
+}
+
+.theme-dark .song-selector {
+  background: #3a3a5a;
+  border-color: #4a4a6a;
+}
+
+.song-search {
+  padding: 12px;
+  border-bottom: 1px solid #D3D3FB;
+}
+
+.theme-dark .song-search {
+  border-bottom-color: #4a4a6a;
+}
+
+.song-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #E7E0FC;
+  border-radius: 20px;
+  font-size: 13px;
+  background: #faf9ff;
+}
+
+.theme-dark .song-search-input {
+  background: #2d2d4a;
+  border-color: #4a4a6a;
+  color: #fff;
+}
+
+.song-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.song-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.theme-dark .song-item {
+  border-bottom-color: #4a4a6a;
+}
+
+.song-item:hover {
+  background: #f5f0ff;
+}
+
+.theme-dark .song-item:hover {
+  background: #4a4a6a;
+}
+
+.song-item.selected {
+  background: #CDB4F3;
+  color: white;
+}
+
+.theme-dark .song-item.selected {
+  background: #6a5a9a;
+}
+
+.song-info {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  align-items: center;
+}
+
+.song-cover {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #CDB4F3, #B7AEE2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cover-placeholder {
+  font-size: 20px;
+}
+
+.song-details {
+  flex: 1;
+}
+
+.song-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.song-artist {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.song-mood-badge {
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+.preview-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #CDB4F3;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-btn:hover {
+  transform: scale(1.1);
+}
+
+.preview-btn.playing {
+  background: #5a4a8c;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.selected-song {
+  margin-top: 12px;
+  padding: 12px;
+  background: #CDB4F3;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.theme-dark .selected-song {
+  background: #6a5a9a;
+}
+
+.selected-song-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-icon {
+  font-size: 20px;
+}
+
+.clear-song-btn {
+  background: rgba(255,255,255,0.3);
+  border: none;
+  border-radius: 20px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-song-btn:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+.no-song {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f5f0ff;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #5a4a8c;
+}
+
+.theme-dark .no-song {
+  background: #3a3a5a;
+  color: #CDB4F3;
+}
+
 .editor-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  margin-top: 24px;
 }
 
 .save-btn {
@@ -204,5 +581,22 @@ watch(() => props.note, (newNote) => {
 
 .theme-dark .cancel-btn:hover {
   background: #4a4a6a;
+}
+
+.song-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.song-list::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.song-list::-webkit-scrollbar-thumb {
+  background: #CDB4F3;
+  border-radius: 3px;
+}
+
+.theme-dark .song-list::-webkit-scrollbar-track {
+  background: #2d2d4a;
 }
 </style>
