@@ -7,7 +7,7 @@
         <input 
           v-model="searchTerm" 
           type="text" 
-          placeholder="Поиск по записям..."
+          placeholder="Поиск по заметкам..."
           class="search-input"
         />
       </div>
@@ -18,7 +18,7 @@
             @click="activeTab = 'all'"
             :class="['tab-btn', { active: activeTab === 'all' }]"
           >
-            🏠 Все записи
+            🏠 Все заметки
           </button>
           <button 
             @click="activeTab = 'moods'"
@@ -97,12 +97,12 @@
       <span class="empty-emoji" v-else-if="activeTab === 'moods'">😊</span>
       <span class="empty-emoji" v-else>🌟</span>
       <p>
-        <span v-if="activeTab === 'all'">Пока нет записей</span>
-        <span v-else-if="activeTab === 'moods' && selectedMoods.length > 0">Нет записей с выбранными настроениями</span>
-        <span v-else-if="activeTab === 'artists' && selectedArtists.length > 0">Нет записей с выбранными группами</span>
-        <span v-else>Нет записей</span>
+        <span v-if="activeTab === 'all'">Пока нет заметок</span>
+        <span v-else-if="activeTab === 'moods' && selectedMoods.length > 0">Нет заметок с выбранными настроениями</span>
+        <span v-else-if="activeTab === 'artists' && selectedArtists.length > 0">Нет заметок с выбранными группами</span>
+        <span v-else>Нет заметок</span>
       </p>
-      <p class="empty-hint">Нажмите ➕ Добавить запись</p>
+      <p class="empty-hint">Нажмите ➕ Добавить заметку</p>
     </div>
 
     <div v-else class="notes-grid">

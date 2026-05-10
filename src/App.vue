@@ -58,9 +58,9 @@
         <div v-if="activeTab === 'notes'" class="tab-content">
           <!-- Заголовок с кнопкой справа -->
           <div class="section-header">
-            <h2>📝 Мои записи</h2>
+            <h2>📝 Мои заметки</h2>
             <button v-if="!showEditor && !editingNote" class="add-note-btn" @click="createNewNote">
-              ＋ Добавить запись
+              ＋ Добавить заметку
             </button>
           </div>
           

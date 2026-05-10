@@ -1,10 +1,10 @@
 <template>
   <div class="note-editor">
-    <h3>{{ note?.id ? '✏️ Редактировать' : '➕ Новая запись' }}</h3>
+    <h3>{{ note?.id ? '✏️ Редактировать' : '➕ Новая заметка' }}</h3>
     
     <div class="editor-field">
       <label>Заголовок *</label>
-      <input v-model="form.title" type="text" placeholder="О чём эта запись?" />
+      <input v-model="form.title" type="text" placeholder="О чём эта заметка?" />
       <div v-if="errors.title" class="error-text">{{ errors.title }}</div>
     </div>
 

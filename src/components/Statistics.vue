@@ -6,7 +6,7 @@
       <div class="stat-card">
         <div class="stat-icon">📝</div>
         <div class="stat-number">{{ notes.length }}</div>
-        <div class="stat-label">Всего записей</div>
+        <div class="stat-label">Всего заметок</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">💭</div>
@@ -40,16 +40,21 @@
         </div>
       </div>
 
-      <!-- Топ исполнителей по впечатлениям -->
+      <!-- Топ исполнителей по среднему рейтингу -->
       <div class="top-artists">
         <h3>🌟 Топ исполнителей</h3>
         <div class="artists-list">
-          <div v-for="artist in topArtists" :key="artist.name" class="artist-item">
+          <div v-for="artist in topArtistsByRating" :key="artist.name" class="artist-item">
             <div class="artist-rank">{{ artist.rank }}</div>
             <div class="artist-name">{{ artist.name }}</div>
-            <div class="artist-count">{{ artist.count }} 💭</div>
+            <div class="artist-rating">
+              <span class="stars">
+                <span v-for="star in 5" :key="star" class="star-small" :class="{ active: star <= Math.round(artist.avgRating) }">★</span>
+              </span>
+              <span class="rating-value">{{ artist.avgRating.toFixed(1) }}</span>
+            </div>
           </div>
-          <div v-if="topArtists.length === 0" class="no-data">
+          <div v-if="topArtistsByRating.length === 0" class="no-data">
             Нет данных об исполнителях
           </div>
         </div>
@@ -78,11 +83,6 @@ const moodList = [
   { value: 'calm', emoji: '😌', label: 'Спокоен' },
   { value: 'sad', emoji: '😢', label: 'Грусть' },
   { value: 'inspired', emoji: '💜', label: 'Вдохновлён' },
-  { value: 'romantic', emoji: '💕', label: 'Романтичный' },
-  { value: 'energetic', emoji: '🔥', label: 'Энергичный' },
-  { value: 'melancholic', emoji: '🌙', label: 'Меланхоличный' },
-  { value: 'confident', emoji: '✨', label: 'Уверенный' },
-  { value: 'nostalgic', emoji: '💭', label: 'Ностальгичный' }
 ]
 
 // Подсчёт количества заметок по настроениям
@@ -127,20 +127,36 @@ const totalSongsInNotes = computed(() => {
   return songs.size
 })
 
-// Топ исполнителей из впечатлений
-const topArtists = computed(() => {
-  const artistCount = {}
+// ТОП ИСПОЛНИТЕЛЕЙ ПО СРЕДНЕМУ РЕЙТИНГУ (из впечатлений)
+const topArtistsByRating = computed(() => {
+  // Собираем оценки по каждому исполнителю
+  const artistRatings = {}
+  
   props.ratings.forEach(rating => {
-    if (rating.artist) {
-      artistCount[rating.artist] = (artistCount[rating.artist] || 0) + 1
+    if (rating.artist && rating.score) {
+      if (!artistRatings[rating.artist]) {
+        artistRatings[rating.artist] = { sum: 0, count: 0 }
+      }
+      artistRatings[rating.artist].sum += rating.score
+      artistRatings[rating.artist].count++
     }
   })
   
-  return Object.entries(artistCount)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
-    .map((item, index) => ({ ...item, rank: index + 1 }))
+  // Вычисляем средний рейтинг
+  const artists = Object.entries(artistRatings).map(([name, data]) => ({
+    name,
+    avgRating: data.sum / data.count,
+    count: data.count
+  }))
+  
+  // Сортируем по среднему рейтингу (по убыванию)
+  artists.sort((a, b) => b.avgRating - a.avgRating)
+  
+  // Берём топ-5 и добавляем ранги
+  return artists.slice(0, 5).map((artist, index) => ({
+    ...artist,
+    rank: index + 1
+  }))
 })
 </script>
 
@@ -363,9 +379,31 @@ const topArtists = computed(() => {
   color: #fff;
 }
 
-.artist-count {
-  font-size: 13px;
+.artist-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+}
+
+.star-small {
+  font-size: 12px;
+  color: #ddd;
+}
+
+.star-small.active {
+  color: #FFD700;
+}
+
+.rating-value {
+  font-size: 12px;
+  font-weight: bold;
   color: #B7AEE2;
+  min-width: 35px;
 }
 
 .no-data {
