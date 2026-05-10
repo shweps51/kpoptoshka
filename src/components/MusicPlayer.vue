@@ -149,70 +149,70 @@ const playlist = ref([
     title: 'Its Me', 
     artist: 'ILLIT', 
     group: 'ILLIT',
-    src: '/music/itsme.mp3', 
+    src: import.meta.env.BASE_URL + 'music/itsme.mp3', 
     mood: 'счастливое'
   },
   { 
     title: 'ALL FOR YOU', 
     artist: 'ILLIT', 
     group: 'ILLIT',
-    src: '/music/all4u.mp3', 
+    src: import.meta.env.BASE_URL + 'music/all4u.mp3', 
     mood: 'романтичное'
   },
   { 
     title: 'Billyeoon Goyangi (Do the Dance)', 
     artist: 'ILLIT', 
     group: 'ILLIT',
-    src: '/music/BG.mp3', 
+    src: import.meta.env.BASE_URL + 'music/BG.mp3', 
     mood: 'энергичное'
   },
   { 
     title: '20cm', 
     artist: 'TOMORROW X TOGETHER', 
     group: 'TXT',
-    src: '/music/20cm.mp3', 
+    src: import.meta.env.BASE_URL + 'music/20cm.mp3', 
     mood: 'ностальгичное'
   },
   { 
     title: '21st Century Romance', 
     artist: 'TOMORROW X TOGETHER', 
     group: 'TXT',
-    src: '/music/Romance.mp3', 
+    src: import.meta.env.BASE_URL + 'music/Romance.mp3', 
     mood: 'романтичное'
   },
   { 
     title: 'Dirty Work', 
     artist: 'aespa', 
     group: 'aespa',
-    src: '/music/dirtywork.mp3', 
+    src: import.meta.env.BASE_URL + 'music/dirtywork.mp3', 
     mood: 'уверенное'
   },
   { 
     title: 'New World', 
     artist: 'ateez', 
     group: 'ateez',
-    src: '/music/newworld.mp3', 
+    src: import.meta.env.BASE_URL + 'music/newworld.mp3', 
     mood: 'вдохновляющее'
   },
   { 
     title: 'Pretty Boy', 
     artist: 'P1Harmony', 
     group: 'P1Harmony',
-    src: '/music/prettyboy.mp3', 
+    src: import.meta.env.BASE_URL + 'music/prettyboy.mp3', 
     mood: 'уверенное'
   },
   { 
     title: 'Ash', 
     artist: 'ateez', 
     group: 'ateez',
-    src: '/music/ash.mp3', 
+    src: import.meta.env.BASE_URL + 'music/ash.mp3', 
     mood: 'меланхоличное'
   },
   { 
     title: 'Stunner', 
     artist: 'TEN', 
     group: 'TEN',
-    src: '/music/stunner.mp3', 
+    src: import.meta.env.BASE_URL + 'music/stunner.mp3', 
     mood: 'энергичное'
   }
 ])
