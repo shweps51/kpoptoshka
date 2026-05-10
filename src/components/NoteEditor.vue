@@ -1,99 +1,17 @@
-<script setup>
-import { reactive, watch, ref, computed } from 'vue'
-
-const props = defineProps({
-  note: {
-    type: Object,
-    default: null
-  },
-  moods: {
-    type: Array,
-    default: () => []
-  }
-})
-
-const emit = defineEmits(['save', 'cancel'])
-
-// Полный плейлист (без recommendedMood, только русские названия настроений не нужны)
-const fullPlaylist = ref([
-  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3' },
-  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3' },
-  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3' },
-  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3' },
-  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3' },
-  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3' },
-  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3' },
-  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3' },
-  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3' },
-  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3' }
-])
-
-const form = reactive({
-  title: '',
-  content: '',
-  mood: 'happy',
-  selectedSong: null
-})
-
-const songSearch = ref('')
-
-const filteredSongs = computed(() => {
-  let songs = [...fullPlaylist.value]
-  if (songSearch.value.trim()) {
-    const query = songSearch.value.toLowerCase()
-    songs = songs.filter(song => 
-      song.title.toLowerCase().includes(query) || 
-      song.artist.toLowerCase().includes(query)
-    )
-  }
-  return songs
-})
-
-const selectSong = (song) => {
-  form.selectedSong = { ...song }
-}
-
-const clearSong = () => {
-  form.selectedSong = null
-}
-
-const saveNote = () => {
-  const noteToSave = {
-    title: form.title,
-    content: form.content,
-    mood: form.mood,
-    selectedSong: form.selectedSong ? { ...form.selectedSong } : null
-  }
-  emit('save', noteToSave)
-}
-
-watch(() => props.note, (newNote) => {
-  if (newNote) {
-    form.title = newNote.title || ''
-    form.content = newNote.content || ''
-    form.mood = newNote.mood || 'happy'
-    form.selectedSong = newNote.selectedSong ? { ...newNote.selectedSong } : null
-  } else {
-    form.title = ''
-    form.content = ''
-    form.mood = 'happy'
-    form.selectedSong = null
-  }
-  songSearch.value = ''
-}, { immediate: true })
-</script>
 <template>
   <div class="note-editor">
     <h3>{{ note?.id ? '✏️ Редактировать' : '➕ Новая запись' }}</h3>
     
     <div class="editor-field">
-      <label>Заголовок</label>
+      <label>Заголовок *</label>
       <input v-model="form.title" type="text" placeholder="О чём эта запись?" />
+      <div v-if="errors.title" class="error-text">{{ errors.title }}</div>
     </div>
 
     <div class="editor-field">
-      <label>Текст заметки</label>
+      <label>Текст заметки *</label>
       <textarea v-model="form.content" rows="6" placeholder="Поделись своими мыслями..."></textarea>
+      <div v-if="errors.content" class="error-text">{{ errors.content }}</div>
     </div>
 
     <div class="editor-field">
@@ -165,6 +83,113 @@ watch(() => props.note, (newNote) => {
   </div>
 </template>
 
+<script setup>
+import { reactive, watch, ref, computed } from 'vue'
+
+const props = defineProps({
+  note: {
+    type: Object,
+    default: null
+  },
+  moods: {
+    type: Array,
+    default: () => []
+  }
+})
+
+const emit = defineEmits(['save', 'cancel'])
+
+// Полный плейлист
+const fullPlaylist = ref([
+  { title: 'Its Me', artist: 'ILLIT', src: '/music/itsme.mp3' },
+  { title: 'ALL FOR YOU', artist: 'ILLIT', src: '/music/all4u.mp3' },
+  { title: 'Billyeoon Goyangi (Do the Dance)', artist: 'ILLIT', src: '/music/BG.mp3' },
+  { title: '20cm', artist: 'TOMORROW X TOGETHER', src: '/music/20cm.mp3' },
+  { title: '21st Century Romance', artist: 'TOMORROW X TOGETHER', src: '/music/Romance.mp3' },
+  { title: 'Dirty Work', artist: 'aespa', src: '/music/dirtywork.mp3' },
+  { title: 'New World', artist: 'ateez', src: '/music/newworld.mp3' },
+  { title: 'Pretty Boy', artist: 'P1Harmony', src: '/music/prettyboy.mp3' },
+  { title: 'Ash', artist: 'ateez', src: '/music/ash.mp3' },
+  { title: 'Stunner', artist: 'TEN', src: '/music/stunner.mp3' }
+])
+
+const form = reactive({
+  title: '',
+  content: '',
+  mood: 'happy',
+  selectedSong: null
+})
+
+const errors = ref({
+  title: '',
+  content: ''
+})
+
+const songSearch = ref('')
+
+const filteredSongs = computed(() => {
+  let songs = [...fullPlaylist.value]
+  if (songSearch.value.trim()) {
+    const query = songSearch.value.toLowerCase()
+    songs = songs.filter(song => 
+      song.title.toLowerCase().includes(query) || 
+      song.artist.toLowerCase().includes(query)
+    )
+  }
+  return songs
+})
+
+const selectSong = (song) => {
+  form.selectedSong = { ...song }
+}
+
+const clearSong = () => {
+  form.selectedSong = null
+}
+
+const saveNote = () => {
+  // Очищаем ошибки
+  errors.value = { title: '', content: '' }
+  let hasError = false
+
+  if (!form.title.trim()) {
+    errors.value.title = 'Введите заголовок'
+    hasError = true
+  }
+
+  if (!form.content.trim()) {
+    errors.value.content = 'Введите текст заметки'
+    hasError = true
+  }
+
+  if (hasError) return
+
+  const noteToSave = {
+    title: form.title,
+    content: form.content,
+    mood: form.mood,
+    selectedSong: form.selectedSong ? { ...form.selectedSong } : null
+  }
+  emit('save', noteToSave)
+}
+
+watch(() => props.note, (newNote) => {
+  if (newNote) {
+    form.title = newNote.title || ''
+    form.content = newNote.content || ''
+    form.mood = newNote.mood || 'happy'
+    form.selectedSong = newNote.selectedSong ? { ...newNote.selectedSong } : null
+  } else {
+    form.title = ''
+    form.content = ''
+    form.mood = 'happy'
+    form.selectedSong = null
+  }
+  errors.value = { title: '', content: '' }
+  songSearch.value = ''
+}, { immediate: true })
+</script>
+
 <style scoped>
 .note-editor {
   background: #E7E0FC;
@@ -201,6 +226,17 @@ watch(() => props.note, (newNote) => {
 
 .theme-dark .editor-field label {
   color: #CDB4F3;
+}
+
+.error-text {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin-top: 6px;
+  margin-left: 4px;
+}
+
+.theme-dark .error-text {
+  color: #ff8888;
 }
 
 .editor-field input,
@@ -362,45 +398,6 @@ watch(() => props.note, (newNote) => {
 .song-artist {
   font-size: 12px;
   opacity: 0.7;
-}
-
-.song-mood-badge {
-  font-size: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0,0,0,0.1);
-  padding: 2px 8px;
-  border-radius: 12px;
-  margin-top: 4px;
-}
-
-.preview-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: #CDB4F3;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.preview-btn:hover {
-  transform: scale(1.1);
-}
-
-.preview-btn.playing {
-  background: #5a4a8c;
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
 }
 
 .selected-song {
