@@ -1,3 +1,117 @@
+<template>
+  <div class="app" :class="{ 'theme-dark': darkMode }">
+    <!-- Верхняя панель -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">☰</button>
+        <h1>💜 Bias Journal</h1>
+      </div>
+      <div class="header-right">
+        <button @click="darkMode = !darkMode" class="icon-btn">
+          {{ darkMode ? '☀️' : '🌙' }}
+        </button>
+      </div>
+    </header>
+
+    <div class="app-main">
+      <aside class="sidebar" :class="{ open: sidebarOpen }">
+        <nav class="sidebar-nav">
+          <button 
+            @click="activeTab = 'notes'; sidebarOpen = false" 
+            class="nav-item"
+            :class="{ active: activeTab === 'notes' }"
+          >
+            <span class="nav-icon">📝</span>
+            <span>Дневник</span>
+          </button>
+          <button 
+            @click="activeTab = 'player'; sidebarOpen = false" 
+            class="nav-item"
+            :class="{ active: activeTab === 'player' }"
+          >
+            <span class="nav-icon">🎵</span>
+            <span>Плеер</span>
+          </button>
+          <button 
+            @click="activeTab = 'tracker'; sidebarOpen = false" 
+            class="nav-item"
+            :class="{ active: activeTab === 'tracker' }"
+          >
+            <span class="nav-icon">⭐</span>
+            <span>Трекер</span>
+          </button>
+          <button 
+            @click="activeTab = 'stats'; sidebarOpen = false" 
+            class="nav-item"
+            :class="{ active: activeTab === 'stats' }"
+          >
+            <span class="nav-icon">📊</span>
+            <span>Статистика</span>
+          </button>
+        </nav>
+      </aside>
+
+      <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
+
+      <main class="main-content">
+        <!-- Вкладка дневника -->
+        <div v-if="activeTab === 'notes'" class="tab-content">
+          <!-- Заголовок с кнопкой справа -->
+          <div class="section-header">
+            <h2>📝 Мои записи</h2>
+            <button v-if="!showEditor && !editingNote" class="add-note-btn" @click="createNewNote">
+              ＋ Добавить запись
+            </button>
+          </div>
+          
+          <NotesList 
+            :notes="notes" 
+            @edit="editNote" 
+            @delete="deleteNote"
+          />
+          
+          <!-- Форма редактора (показывается только при создании/редактировании) -->
+          <div v-if="showEditor || editingNote" class="editor-wrapper">
+            <NoteEditor 
+              :note="editingNote"
+              :moods="moods"
+              @save="saveNote"
+              @cancel="cancelEdit"
+            />
+          </div>
+        </div>
+
+        <!-- Вкладка плеера -->
+        <div v-if="activeTab === 'player'" class="tab-content">
+          <MusicPlayer />
+        </div>
+
+        <!-- Вкладка трекера -->
+        <div v-if="activeTab === 'tracker'" class="tab-content">
+          <RatingTracker 
+            :ratings="ratings"
+            @add="addRating"
+            @delete="deleteRating"
+          />
+        </div>
+
+        <!-- Вкладка статистики -->
+        <div v-if="activeTab === 'stats'" class="tab-content">
+          <Statistics :notes="notes" :ratings="ratings" />
+        </div>
+      </main>
+    </div>
+
+    <!-- Нижняя панель для мобильных -->
+    <footer class="bottom-nav">
+      <button @click="activeTab = 'notes'" class="bottom-nav-item" :class="{ active: activeTab === 'notes' }">📝</button>
+      <button @click="activeTab = 'player'" class="bottom-nav-item" :class="{ active: activeTab === 'player' }">🎵</button>
+      <button @click="activeTab = 'tracker'" class="bottom-nav-item" :class="{ active: activeTab === 'tracker' }">⭐</button>
+      <button @click="activeTab = 'stats'" class="bottom-nav-item" :class="{ active: activeTab === 'stats' }">📊</button>
+    </footer>
+  </div>
+</template>
+
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import NotesList from './components/NotesList.vue'
@@ -22,7 +136,7 @@ const {
 
 const activeTab = ref('notes')
 const sidebarOpen = ref(false)
-const showEditor = ref(false)  // ← управляет видимостью формы
+const showEditor = ref(false)
 const editingNote = ref(null)
 
 const moods = [
@@ -71,100 +185,7 @@ onMounted(() => {
   loadData()
 })
 </script>
-<template>
-  <div class="app" :class="{ 'theme-dark': darkMode }">
-    <!-- Верхняя панель -->
-    <header class="app-header">
-      <div class="header-left">
-        <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">☰</button>
-        <h1>💜 Bias Journal</h1>
-      </div>
-      <div class="header-right">
-        <button @click="darkMode = !darkMode" class="icon-btn">
-          {{ darkMode ? '☀️' : '🌙' }}
-        </button>
-      </div>
-    </header>
 
-    <div class="app-main">
-      <aside class="sidebar" :class="{ open: sidebarOpen }">
-        <nav class="sidebar-nav">
-          <button @click="activeTab = 'notes'; sidebarOpen = false" class="nav-item" :class="{ active: activeTab === 'notes' }">
-            <span class="nav-icon">📝</span>
-            <span>Дневник</span>
-          </button>
-          <button @click="activeTab = 'player'; sidebarOpen = false" class="nav-item" :class="{ active: activeTab === 'player' }">
-            <span class="nav-icon">🎵</span>
-            <span>Плеер</span>
-          </button>
-          <button @click="activeTab = 'tracker'; sidebarOpen = false" class="nav-item" :class="{ active: activeTab === 'tracker' }">
-            <span class="nav-icon">⭐</span>
-            <span>Трекер</span>
-          </button>
-          <button @click="activeTab = 'stats'; sidebarOpen = false" class="nav-item" :class="{ active: activeTab === 'stats' }">
-            <span class="nav-icon">📊</span>
-            <span>Статистика</span>
-          </button>
-        </nav>
-      </aside>
-
-      <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
-
-      <main class="main-content">
-        <!-- Вкладка дневника -->
-        <div v-if="activeTab === 'notes'" class="tab-content">
-          <NotesList 
-            :notes="notes" 
-            @edit="editNote" 
-            @delete="deleteNote"
-          />
-          
-          <!-- Кнопка "Добавить запись" -->
-          <button v-if="!showEditor && !editingNote" class="fab-add" @click="createNewNote">
-            ＋ Добавить запись
-          </button>
-          
-          <!-- Форма редактора (показывается только при создании/редактировании) -->
-          <div v-if="showEditor || editingNote" class="editor-wrapper">
-            <NoteEditor 
-              :note="editingNote"
-              :moods="moods"
-              @save="saveNote"
-              @cancel="cancelEdit"
-            />
-          </div>
-        </div>
-
-        <!-- Вкладка плеера -->
-        <div v-if="activeTab === 'player'" class="tab-content">
-          <MusicPlayer />
-        </div>
-
-        <!-- Вкладка трекера -->
-        <div v-if="activeTab === 'tracker'" class="tab-content">
-          <RatingTracker 
-            :ratings="ratings"
-            @add="addRating"
-            @delete="deleteRating"
-          />
-        </div>
-
-        <!-- Вкладка статистики -->
-        <div v-if="activeTab === 'stats'" class="tab-content">
-          <Statistics :notes="notes" :ratings="ratings" />
-        </div>
-      </main>
-    </div>
-
-    <!-- Нижняя панель для мобильных -->
-    <footer class="bottom-nav">
-      <button @click="activeTab = 'notes'" class="bottom-nav-item" :class="{ active: activeTab === 'notes' }">📝</button>
-      <button @click="activeTab = 'player'" class="bottom-nav-item" :class="{ active: activeTab === 'player' }">🎵</button>
-      <button @click="activeTab = 'tracker'" class="bottom-nav-item" :class="{ active: activeTab === 'tracker' }">⭐</button>
-      <button @click="activeTab = 'stats'" class="bottom-nav-item" :class="{ active: activeTab === 'stats' }">📊</button>
-    </footer>
-  </div>
-</template>
 <style>
 * {
   margin: 0;
@@ -361,32 +382,46 @@ body {
   width: 100%;
 }
 
-/* Кнопка добавления записи (как в трекере) */
-.fab-add {
-  display: block;
-  width: 100%;
-  background: #B7AEE2;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 30px;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  margin-top: 20px;
+/* Заголовок с кнопкой справа */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
-.fab-add:hover {
+.section-header h2 {
+  font-size: 24px;
+  color: #5a4a8c;
+  margin: 0;
+}
+
+.theme-dark .section-header h2 {
+  color: #CDB4F3;
+}
+
+.add-note-btn {
+  background: #B7AEE2;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 30px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.add-note-btn:hover {
   background: #CDB4F3;
   transform: translateY(-2px);
 }
 
-.theme-dark .fab-add {
+.theme-dark .add-note-btn {
   background: #4a4a6a;
 }
 
-.theme-dark .fab-add:hover {
+.theme-dark .add-note-btn:hover {
   background: #6a5a9a;
 }
 

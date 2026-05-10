@@ -1,7 +1,6 @@
 <template>
   <div class="notes-list">
     <div class="list-header">
-      <h2>📝 Мои записи</h2>
 
       <div class="search-bar">
         <span class="search-icon">🔍</span>
